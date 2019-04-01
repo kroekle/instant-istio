@@ -16,22 +16,29 @@ This demo assumes that you have a working Kubernetes cluster setup and kubectl c
 
 + Download the most current version of Isito
 
-`curl -L https://git.io/getLatestIstio | ISTIO_VERSION=1.1.1 sh -`
+```
+curl -L https://git.io/getLatestIstio | ISTIO_VERSION=1.1.1 sh -
+```
 
 + Install Istio CRDs
 
-`cd istio-1.1.1
-for i in install/kubernetes/helm/istio-init/files/crd*yaml; do kubectl apply -f $i; done`
+```
+cd istio-1.1.1
+for i in install/kubernetes/helm/istio-init/files/crd*yaml; do kubectl apply -f $i; done
+```
 
 + Install permissive mode resources
 
-`kubectl apply -f install/kubernetes/istio-demo.yaml`
+```
+kubectl apply -f install/kubernetes/istio-demo.yaml
+```
 
 + Wait until all services/pods are running
 
-`kubectl get svc --namespace=istio-system
+```
+kubectl get svc --namespace=istio-system
 kubectl get pods --namespace=istio-system
-`
+```
 
 Pods should look something like this when ready:
 
@@ -57,11 +64,29 @@ The most convenient way to use Istio is to use the automatic sidecar injection. 
 
 + Add label to namespace
 
-`kubectl label namespace <namespace> istio-injection=enabled`
+```
+kubectl label namespace <namespace> istio-injection=enabled
+```
 
 + Update all the pods
 
-`for i in $(kubectl get deployment --no-headers -o custom-columns=":metadata.name"); do kubectl set env deployment $i --env="force_restart=$(date)"; done`
+```
+for i in $(kubectl get deployment --no-headers -o custom-columns=":metadata.name"); do kubectl set env deployment $i --env="force_restart=$(date)"; done
+```
+
+## Visualizing 
+
+```
+kubectl -n istio-system port-forward $(kubectl -n istio-system get pod -l app=kiali -o jsonpath='{.items[0].metadata.name}') 20001:20001 &
+http://localhost:20001/kiali/console
+```
+
+## Metrics
+
+```
+kubectl -n istio-system port-forward $(kubectl -n istio-system get pod -l app=grafana -o jsonpath='{.items[0].metadata.name}') 3000:3000 &
+http://localhost:3000/dashboard/db/istio-mesh-dashboard
+```
 
 ## Cleanup
 
@@ -69,15 +94,23 @@ It's a good idea to clean up all the Istio artifact as you could be charged (on 
 
 + Remove Istio pods
 
-`kubectl delete -f install/kubernetes/istio-demo.yaml`
+```
+kubectl delete -f install/kubernetes/istio-demo.yaml
+```
 
 + Remove Istio CRDs (optional)
 
-`for i in install/kubernetes/helm/istio-init/files/crd*yaml; do kubectl delete -f $i; done`
+```
+for i in install/kubernetes/helm/istio-init/files/crd*yaml; do kubectl delete -f $i; done
+```
 
 + Remove namespace label
 
-``
+```
+
+```
 
 +  Restart your pods to remove sidecar
-`for i in $(kubectl get deployment --no-headers -o custom-columns=":metadata.name"); do kubectl set env deployment $i --env="force_restart=$(date)"; done`
+```
+for i in $(kubectl get deployment --no-headers -o custom-columns=":metadata.name"); do kubectl set env deployment $i --env="force_restart=$(date)"; done
+```
