@@ -169,6 +169,57 @@ spec:
 EOF
 ```
 
+## Whitelisting/Blacklisting
+
+From within Istio you can whitlist/blacklist requests.  Not only can you do this based on IP address or attributes.  This example will walk you through a simple whitelist of an ip address.
+
+The first resource is a list checker where we define the ip address and that we want to whitelist it
+
+```
+kubectl apply -f - <<EOF
+apiVersion: config.istio.io/v1alpha2
+kind: listchecker
+metadata:
+  name: whitelistip
+spec:
+  overrides: ["<ip address>/32"]  # overrides provide a static list
+  blacklist: false
+  entryType: IP_ADDRESSES
+EOF
+
+```
+
+The second resource is a list entry that gets the source ip of the request
+
+```
+kubectl apply -f - <<EOF
+apiVersion: config.istio.io/v1alpha2
+kind: listentry
+metadata:
+  name: sourceip
+spec:
+  value: source.ip | ip("0.0.0.0")
+EOF
+```
+
+The thrid resource is the rule that references the previous two resources to create the whitelist 
+
+```
+kubectl apply -f - <<EOF
+apiVersion: config.istio.io/v1alpha2
+kind: rule
+metadata:
+  name: checkip
+spec:
+  match: source.labels["istio"] == "ingressgateway"
+  actions:
+  - handler: whitelistip.listchecker
+    instances:
+    - sourceip.listentry
+EOF
+```
+
+
 ## Cleanup
 
 It's a good idea to clean up all the Istio artifact as you could be charged (on a clould provider) for the resources they take up.
