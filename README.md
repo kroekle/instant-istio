@@ -129,7 +129,7 @@ kubectl apply -f - <<EOF
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
-  name: <name>
+  name: <gateway name>
 spec:
   selector:
     istio: ingressgateway # use Istio default gateway implementation
@@ -161,7 +161,7 @@ spec:
         prefix: /<path>
     route:
     - destination:
-        host: <service host>
+        host: <service name>
     retries:
       attempts: 3
       perTryTimeout: 2s
