@@ -41,22 +41,24 @@ kubectl get pods --namespace=istio-system
 ```
 
 Pods should look something like this when ready:
-
-    grafana-7b46bf6b7c-6844n                  1/1       Running     0          4m
-    istio-citadel-5878d994cc-kv5wb            1/1       Running     0          4m
-    istio-cleanup-secrets-1.1.1-kzvh2         0/1       Completed   0          4m
-    istio-egressgateway-976f94bd-7nrw5        0/1       Running     0          4m
-    istio-galley-7855cc97dc-cp8tw             1/1       Running     0          4m
-    istio-grafana-post-install-1.1.1-dn5v2    0/1       Completed   0          4m
-    istio-ingressgateway-794cfcf8bc-8r5t6     0/1       Running     0          4m
-    istio-pilot-746995884c-5qmkh              0/2       Pending     0          4m
-    istio-policy-74c95b5657-vk9dd             2/2       Running     3          4m
-    istio-security-post-install-1.1.1-rc5wx   0/1       Completed   0          4m
-    istio-sidecar-injector-59fc9d6f7d-m6ld2   1/1       Running     0          4m
-    istio-telemetry-6c5d7b55bf-wvn55          2/2       Running     0          4m
-    istio-tracing-75dd89b8b4-j2xn9            1/1       Running     0          4m
-    kiali-5d68f4c676-9mmjb                    1/1       Running     0          4m
-    prometheus-89bc5668c-dpd84                1/1       Running     0          4m
+```
+NAME                                      READY     STATUS      RESTARTS   AGE
+grafana-7b46bf6b7c-wm2lk                  1/1       Running     0          4m
+istio-citadel-5878d994cc-vxdth            1/1       Running     0          4m
+istio-cleanup-secrets-1.1.1-grqr5         0/1       Completed   0          4m
+istio-egressgateway-976f94bd-pvtts        1/1       Running     0          4m
+istio-galley-7855cc97dc-r55gm             1/1       Running     0          4m
+istio-grafana-post-install-1.1.1-p69t8    0/1       Completed   0          4m
+istio-ingressgateway-794cfcf8bc-522bj     1/1       Running     0          4m
+istio-pilot-746995884c-nds8h              2/2       Running     0          4m
+istio-policy-74c95b5657-bhxpd             2/2       Running     4          4m
+istio-security-post-install-1.1.1-7mxr5   0/1       Completed   0          4m
+istio-sidecar-injector-59fc9d6f7d-rnrmt   1/1       Running     0          4m
+istio-telemetry-6c5d7b55bf-bp6vw          2/2       Running     4          4m
+istio-tracing-75dd89b8b4-thhwl            1/1       Running     0          4m
+kiali-5d68f4c676-fw2l4                    1/1       Running     0          4m
+prometheus-89bc5668c-85fvf                1/1       Running     0          4m
+```
 
 ##  Enable Istio for namesapce
 
@@ -76,6 +78,8 @@ for i in $(kubectl get deployment --no-headers -o custom-columns=":metadata.name
 
 ## Visualizing 
 
+The default setup will install Kiali for visualizing the running services.  Use the following to view Kiali locally.  Default user:pass is admin:admin.
+
 ```
 kubectl -n istio-system port-forward $(kubectl -n istio-system get pod -l app=kiali -o jsonpath='{.items[0].metadata.name}') 20001:20001 &
 http://localhost:20001/kiali/console
@@ -83,9 +87,86 @@ http://localhost:20001/kiali/console
 
 ## Metrics
 
+The default setup will install Grafana for dislaying metrics.  Use the following to view Grafana locally.  No login will be required by default.
+
 ```
 kubectl -n istio-system port-forward $(kubectl -n istio-system get pod -l app=grafana -o jsonpath='{.items[0].metadata.name}') 3000:3000 &
 http://localhost:3000/dashboard/db/istio-mesh-dashboard
+```
+
+## Retries
+
+You can configure automatic retries on a service with the following config.  The retryOn attribute can be comma delimited of values found [here](https://www.envoyproxy.io/docs/envoy/latest/configuration/http_filters/router_filter#x-envoy-retry-on) 
+
+```
+kubectl apply -f - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: <name>
+spec:
+  hosts:
+    - <service name>
+  http:
+  - route:
+    - destination:
+        host: <service name>
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+      retryOn: 5xx 
+EOF
+```
+
+## Controlling Ingress
+
+Istio has a concept called an IngressGateway.  This is different then a standard Kubernetes ingress, in fact, if you currently use a k8s ingress, this (as well as a change to the VirtualService) will replace it.  
+
+The following setups a new Gateway, which will add configuration to the default istio ingressgateway.
+
+```
+kubectl apply -f - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: <name>
+spec:
+  selector:
+    istio: ingressgateway # use Istio default gateway implementation
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+```
+
+The following is what your new virtualservice looks like:
+
+```
+kubectl apply -f - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: <name>
+spec:
+  hosts:
+    - "*"
+  gateways:
+  - <gateway name>
+  http:
+  - match:
+    - uri:
+        prefix: /<path>
+    route:
+    - destination:
+        host: <service host>
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+      retryOn: 5xx 
+EOF
 ```
 
 ## Cleanup
@@ -107,7 +188,7 @@ for i in install/kubernetes/helm/istio-init/files/crd*yaml; do kubectl delete -f
 + Remove namespace label
 
 ```
-
+kubectl label namespace default istio-injection-
 ```
 
 +  Restart your pods to remove sidecar
