@@ -169,6 +169,37 @@ spec:
 EOF
 ```
 
+## Injecting Faults
+
+You can configure the VirtualService to inject faults into your system (chaos testing).  The following example will add delays and faults to 20% of the request coming in
+
+```
+kubectl apply -f - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: <name>
+spec:
+  hosts:
+    - <name>
+  http:
+  - fault:
+      delay:
+        fixedDelay: 7s
+        percent: 20
+      abort:
+        httpStatus: 409
+        percent: 20
+    route:
+    - destination:
+        host: <name>
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+      retryOn: 5xx
+EOF
+```
+
 ## Whitelisting/Blacklisting
 
 From within Istio you can whitlist/blacklist requests.  Not only can you do this based on IP address or attributes.  This example will walk you through a simple whitelist of an ip address.
