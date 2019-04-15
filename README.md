@@ -17,13 +17,13 @@ This demo assumes that you have a working Kubernetes cluster setup and kubectl c
 + Download the most current version of Isito
 
 ```
-curl -L https://git.io/getLatestIstio | ISTIO_VERSION=1.1.1 sh -
+curl -L https://git.io/getLatestIstio | ISTIO_VERSION=1.1.2 sh -
 ```
 
 + Install Istio CRDs
 
 ```
-cd istio-1.1.1
+cd istio-1.1.2
 for i in install/kubernetes/helm/istio-init/files/crd*yaml; do kubectl apply -f $i; done
 ```
 
